@@ -18,50 +18,39 @@ fi
 
 # Check if we're in a git repository with a remote
 if ! git remote get-url origin &> /dev/null; then
-    echo "❌ No git remote found. Please push to GitHub first:"
-    echo "   git remote add origin https://github.com/username/parakeet-semantic-search.git"
-    echo "   git push -u origin main"
+    echo "❌ No git remote found."
     exit 1
 fi
 
-REPO=$(gh repo view --json nameWithOwner -q)
+REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
 echo "📦 Repository: $REPO"
 
 # Create labels
 echo ""
 echo "📌 Creating labels..."
-gh label create "phase-1" --description "Phase 1: Foundation & Setup" --color "0052cc" 2>/dev/null || true
-gh label create "phase-2" --description "Phase 2: Search Interface & CLI" --color "0075ca" 2>/dev/null || true
-gh label create "phase-3" --description "Phase 3: Advanced Features" --color "009800" 2>/dev/null || true
-gh label create "phase-4" --description "Phase 4: Polish & Deployment" --color "fbca04" 2>/dev/null || true
-gh label create "testing" --description "Testing related" --color "ffd700" 2>/dev/null || true
-gh label create "infrastructure" --description "Infrastructure setup" --color "d4c5f9" 2>/dev/null || true
-gh label create "documentation" --description "Documentation" --color "0075ca" 2>/dev/null || true
-gh label create "feature" --description "New feature" --color "a2eeef" 2>/dev/null || true
-gh label create "cli" --description "CLI related" --color "cccccc" 2>/dev/null || true
-gh label create "data-ingestion" --description "Data ingestion pipeline" --color "5319e7" 2>/dev/null || true
-gh label create "ml" --description "ML/AI related" --color "c2e0c6" 2>/dev/null || true
-gh label create "performance" --description "Performance optimization" --color "f29513" 2>/dev/null || true
-gh label create "optimization" --description "Code optimization" --color "fbca04" 2>/dev/null || true
-gh label create "ui" --description "User interface" --color "c5def5" 2>/dev/null || true
-gh label create "api" --description "API related" --color "0969da" 2>/dev/null || true
-gh label create "deployment" --description "Deployment related" --color "ff6b6b" 2>/dev/null || true
-gh label create "release" --description "Release related" --color "0e8a16" 2>/dev/null || true
-gh label create "analysis" --description "Data analysis" --color "1f883d" 2>/dev/null || true
+gh label create "phase-1" --description "Phase 1: Foundation & Setup" --color "0052cc" 2>/dev/null || echo "  ✓ phase-1"
+gh label create "phase-2" --description "Phase 2: Search Interface & CLI" --color "0075ca" 2>/dev/null || echo "  ✓ phase-2"
+gh label create "phase-3" --description "Phase 3: Advanced Features" --color "009800" 2>/dev/null || echo "  ✓ phase-3"
+gh label create "phase-4" --description "Phase 4: Polish & Deployment" --color "fbca04" 2>/dev/null || echo "  ✓ phase-4"
+gh label create "testing" --description "Testing related" --color "ffd700" 2>/dev/null || echo "  ✓ testing"
+gh label create "infrastructure" --description "Infrastructure setup" --color "d4c5f9" 2>/dev/null || echo "  ✓ infrastructure"
+gh label create "documentation" --description "Documentation" --color "0075ca" 2>/dev/null || echo "  ✓ documentation"
+gh label create "feature" --description "New feature" --color "a2eeef" 2>/dev/null || echo "  ✓ feature"
+gh label create "cli" --description "CLI related" --color "cccccc" 2>/dev/null || echo "  ✓ cli"
+gh label create "data-ingestion" --description "Data ingestion pipeline" --color "5319e7" 2>/dev/null || echo "  ✓ data-ingestion"
+gh label create "ml" --description "ML/AI related" --color "c2e0c6" 2>/dev/null || echo "  ✓ ml"
+gh label create "performance" --description "Performance optimization" --color "f29513" 2>/dev/null || echo "  ✓ performance"
+gh label create "optimization" --description "Code optimization" --color "fbca04" 2>/dev/null || echo "  ✓ optimization"
+gh label create "ui" --description "User interface" --color "c5def5" 2>/dev/null || echo "  ✓ ui"
+gh label create "api" --description "API related" --color "0969da" 2>/dev/null || echo "  ✓ api"
+gh label create "deployment" --description "Deployment related" --color "ff6b6b" 2>/dev/null || echo "  ✓ deployment"
+gh label create "release" --description "Release related" --color "0e8a16" 2>/dev/null || echo "  ✓ release"
+gh label create "analysis" --description "Data analysis" --color "1f883d" 2>/dev/null || echo "  ✓ analysis"
 echo "✅ Labels created"
-
-# Create milestones
-echo ""
-echo "🎯 Creating milestones..."
-gh milestone create "Phase 1 - Foundation" --description "Weeks 1-2: Core infrastructure and tests" 2>/dev/null || true
-gh milestone create "Phase 2 - Search Interface" --description "Weeks 3-4: Search CLI and data ingestion" 2>/dev/null || true
-gh milestone create "Phase 3 - Advanced Features" --description "Weeks 5-6: Recommendations and analysis" 2>/dev/null || true
-gh milestone create "Phase 4 - Polish & Release" --description "Weeks 7-8: Web UI and final polish" 2>/dev/null || true
-echo "✅ Milestones created"
 
 # Phase 1 Issues
 echo ""
-echo "📋 Creating Phase 1 issues..."
+echo "📋 Creating Phase 1 issues (4 issues)..."
 
 gh issue create \
   --title "Phase 1.1: Unit tests for EmbeddingModel and VectorStore" \
@@ -83,8 +72,7 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-1,testing,infrastructure" \
-  --milestone "Phase 1 - Foundation"
+  --label "phase-1,testing,infrastructure" > /dev/null && echo "  ✓ Issue 1.1 created"
 
 gh issue create \
   --title "Phase 1.2: Integration tests - Full embedding to search pipeline" \
@@ -106,8 +94,7 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-1,testing,infrastructure" \
-  --milestone "Phase 1 - Foundation"
+  --label "phase-1,testing,infrastructure" > /dev/null && echo "  ✓ Issue 1.2 created"
 
 gh issue create \
   --title "Phase 1.3: Data schema documentation & Pydantic models" \
@@ -129,8 +116,7 @@ gh issue create \
 
 ## Effort Estimate
 1-2 days" \
-  --label "phase-1,documentation,infrastructure" \
-  --milestone "Phase 1 - Foundation"
+  --label "phase-1,documentation,infrastructure" > /dev/null && echo "  ✓ Issue 1.3 created"
 
 gh issue create \
   --title "Phase 1.4: Performance benchmarks & profiling" \
@@ -152,11 +138,11 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-1,performance,infrastructure" \
-  --milestone "Phase 1 - Foundation"
+  --label "phase-1,performance,infrastructure" > /dev/null && echo "  ✓ Issue 1.4 created"
 
 # Phase 2 Issues
-echo "📋 Creating Phase 2 issues..."
+echo ""
+echo "📋 Creating Phase 2 issues (6 issues)..."
 
 gh issue create \
   --title "Phase 2.1: Enhance CLI - Full search command implementation" \
@@ -180,8 +166,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-2,cli,feature" \
-  --milestone "Phase 2 - Search Interface"
+  --label "phase-2,cli,feature" > /dev/null && echo "  ✓ Issue 2.1 created"
 
 gh issue create \
   --title "Phase 2.2: Implement recommend command" \
@@ -204,8 +189,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-2,cli,feature" \
-  --milestone "Phase 2 - Search Interface"
+  --label "phase-2,cli,feature" > /dev/null && echo "  ✓ Issue 2.2 created"
 
 gh issue create \
   --title "Phase 2.3: Data ingestion - DuckDB to vector store pipeline" \
@@ -227,8 +211,7 @@ gh issue create \
 
 ## Effort Estimate
 4-5 days" \
-  --label "phase-2,data-ingestion,infrastructure" \
-  --milestone "Phase 2 - Search Interface"
+  --label "phase-2,data-ingestion,infrastructure" > /dev/null && echo "  ✓ Issue 2.3 created"
 
 gh issue create \
   --title "Phase 2.4: Transcript chunking strategy implementation" \
@@ -250,8 +233,7 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-2,data-ingestion,infrastructure" \
-  --milestone "Phase 2 - Search Interface"
+  --label "phase-2,data-ingestion,infrastructure" > /dev/null && echo "  ✓ Issue 2.4 created"
 
 gh issue create \
   --title "Phase 2.5: Complete embedding pipeline script" \
@@ -273,8 +255,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-2,data-ingestion,infrastructure" \
-  --milestone "Phase 2 - Search Interface"
+  --label "phase-2,data-ingestion,infrastructure" > /dev/null && echo "  ✓ Issue 2.5 created"
 
 gh issue create \
   --title "Phase 2.6: CLI integration tests & documentation" \
@@ -297,11 +278,11 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-2,testing,documentation" \
-  --milestone "Phase 2 - Search Interface"
+  --label "phase-2,testing,documentation" > /dev/null && echo "  ✓ Issue 2.6 created"
 
 # Phase 3 Issues
-echo "📋 Creating Phase 3 issues..."
+echo ""
+echo "📋 Creating Phase 3 issues (5 issues)..."
 
 gh issue create \
   --title "Phase 3.1: Recommendation engine implementation" \
@@ -322,8 +303,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-3,feature,ml" \
-  --milestone "Phase 3 - Advanced Features"
+  --label "phase-3,feature,ml" > /dev/null && echo "  ✓ Issue 3.1 created"
 
 gh issue create \
   --title "Phase 3.2: Exploratory analysis Jupyter notebook" \
@@ -346,8 +326,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-3,documentation,analysis" \
-  --milestone "Phase 3 - Advanced Features"
+  --label "phase-3,documentation,analysis" > /dev/null && echo "  ✓ Issue 3.2 created"
 
 gh issue create \
   --title "Phase 3.3: Episode clustering & topic analysis" \
@@ -369,8 +348,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-3,ml,analysis" \
-  --milestone "Phase 3 - Advanced Features"
+  --label "phase-3,ml,analysis" > /dev/null && echo "  ✓ Issue 3.3 created"
 
 gh issue create \
   --title "Phase 3.4: Quality metrics & evaluation framework" \
@@ -392,8 +370,7 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-3,testing,analysis" \
-  --milestone "Phase 3 - Advanced Features"
+  --label "phase-3,testing,analysis" > /dev/null && echo "  ✓ Issue 3.4 created"
 
 gh issue create \
   --title "Phase 3.5: Performance optimization & caching" \
@@ -415,11 +392,11 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-3,performance,optimization" \
-  --milestone "Phase 3 - Advanced Features"
+  --label "phase-3,performance,optimization" > /dev/null && echo "  ✓ Issue 3.5 created"
 
 # Phase 4 Issues
-echo "📋 Creating Phase 4 issues..."
+echo ""
+echo "📋 Creating Phase 4 issues (5 issues)..."
 
 gh issue create \
   --title "Phase 4.1: Streamlit web application" \
@@ -443,8 +420,7 @@ gh issue create \
 
 ## Effort Estimate
 4-5 days" \
-  --label "phase-4,ui,deployment" \
-  --milestone "Phase 4 - Polish & Release"
+  --label "phase-4,ui,deployment" > /dev/null && echo "  ✓ Issue 4.1 created"
 
 gh issue create \
   --title "Phase 4.2: Optional REST API with FastAPI" \
@@ -468,8 +444,7 @@ gh issue create \
 
 ## Effort Estimate
 3-4 days" \
-  --label "phase-4,api,deployment" \
-  --milestone "Phase 4 - Polish & Release"
+  --label "phase-4,api,deployment" > /dev/null && echo "  ✓ Issue 4.2 created"
 
 gh issue create \
   --title "Phase 4.3: Comprehensive documentation" \
@@ -492,8 +467,7 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-4,documentation,deployment" \
-  --milestone "Phase 4 - Polish & Release"
+  --label "phase-4,documentation,deployment" > /dev/null && echo "  ✓ Issue 4.3 created"
 
 gh issue create \
   --title "Phase 4.4: Docker containerization (optional)" \
@@ -513,8 +487,7 @@ gh issue create \
 
 ## Effort Estimate
 1-2 days" \
-  --label "phase-4,deployment,infrastructure" \
-  --milestone "Phase 4 - Polish & Release"
+  --label "phase-4,deployment,infrastructure" > /dev/null && echo "  ✓ Issue 4.4 created"
 
 gh issue create \
   --title "Phase 4.5: Release preparation & QA" \
@@ -538,19 +511,20 @@ gh issue create \
 
 ## Effort Estimate
 2-3 days" \
-  --label "phase-4,testing,release" \
-  --milestone "Phase 4 - Polish & Release"
+  --label "phase-4,testing,release" > /dev/null && echo "  ✓ Issue 4.5 created"
 
 echo ""
 echo "✅ All 18 GitHub issues created successfully!"
 echo ""
 echo "📊 Summary:"
-echo "  Phase 1: 4 issues"
-echo "  Phase 2: 6 issues"
-echo "  Phase 3: 5 issues"
-echo "  Phase 4: 5 issues"
+echo "  Phase 1: 4 issues (Foundation & Testing)"
+echo "  Phase 2: 6 issues (Search Interface & CLI)"
+echo "  Phase 3: 5 issues (Advanced Features)"
+echo "  Phase 4: 5 issues (Web UI & Release)"
 echo ""
-echo "🎯 Next steps:"
-echo "  1. Visit: https://github.com/$(gh repo view --json nameWithOwner -q)/issues"
+echo "🔗 View issues: https://github.com/$REPO/issues"
+echo ""
+echo "🚀 Next steps:"
+echo "  1. Visit the repository issues page"
 echo "  2. Start with Phase 1 issues"
-echo "  3. Track progress with milestones"
+echo "  3. Track progress via GitHub"
