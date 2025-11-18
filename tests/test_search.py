@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 from parakeet_search.search import SearchEngine
 
@@ -12,8 +12,8 @@ class TestSearchEngineInit:
 
     def test_init_default_models(self):
         """Test initialization with default models."""
-        with patch('parakeet_search.search.EmbeddingModel') as mock_em_class:
-            with patch('parakeet_search.search.VectorStore') as mock_vs_class:
+        with patch("parakeet_search.search.EmbeddingModel") as mock_em_class:
+            with patch("parakeet_search.search.VectorStore") as mock_vs_class:
                 mock_em = MagicMock()
                 mock_vs = MagicMock()
                 mock_em_class.return_value = mock_em
@@ -40,7 +40,7 @@ class TestSearchEngineInit:
         """Test initialization with custom embedding model."""
         mock_em = MagicMock()
 
-        with patch('parakeet_search.search.VectorStore') as mock_vs_class:
+        with patch("parakeet_search.search.VectorStore") as mock_vs_class:
             mock_vs = MagicMock()
             mock_vs_class.return_value = mock_vs
 
@@ -53,7 +53,7 @@ class TestSearchEngineInit:
         """Test initialization with custom vector store."""
         mock_vs = MagicMock()
 
-        with patch('parakeet_search.search.EmbeddingModel') as mock_em_class:
+        with patch("parakeet_search.search.EmbeddingModel") as mock_em_class:
             mock_em = MagicMock()
             mock_em_class.return_value = mock_em
 
@@ -81,8 +81,8 @@ class TestSearchEngineSearch:
         search_engine.embedding_model.embed_text.return_value = query_embedding
 
         expected_results = [
-            {'episode_title': 'Episode 1', '_distance': 0.1},
-            {'episode_title': 'Episode 2', '_distance': 0.2}
+            {"episode_title": "Episode 1", "_distance": 0.1},
+            {"episode_title": "Episode 2", "_distance": 0.2},
         ]
         search_engine.vectorstore.search.return_value = expected_results
 
@@ -93,10 +93,7 @@ class TestSearchEngineSearch:
         assert len(results) == 2
         assert results == expected_results
         search_engine.embedding_model.embed_text.assert_called_once_with(query)
-        search_engine.vectorstore.search.assert_called_once_with(
-            query_embedding.tolist(),
-            limit=10
-        )
+        search_engine.vectorstore.search.assert_called_once_with(query_embedding.tolist(), limit=10)
 
     def test_search_with_custom_limit(self, search_engine):
         """Test search with custom limit."""
@@ -107,10 +104,7 @@ class TestSearchEngineSearch:
 
         search_engine.search(query, limit=20)
 
-        search_engine.vectorstore.search.assert_called_once_with(
-            query_embedding.tolist(),
-            limit=20
-        )
+        search_engine.vectorstore.search.assert_called_once_with(query_embedding.tolist(), limit=20)
 
     def test_search_with_threshold(self, search_engine):
         """Test search with similarity threshold filtering."""
@@ -120,17 +114,17 @@ class TestSearchEngineSearch:
 
         # Simulate results with various distances
         all_results = [
-            {'episode_title': 'Episode 1', '_distance': 0.1},
-            {'episode_title': 'Episode 2', '_distance': 0.5},
-            {'episode_title': 'Episode 3', '_distance': 0.8}
+            {"episode_title": "Episode 1", "_distance": 0.1},
+            {"episode_title": "Episode 2", "_distance": 0.5},
+            {"episode_title": "Episode 3", "_distance": 0.8},
         ]
         search_engine.vectorstore.search.return_value = all_results
 
         # Note: threshold in implementation filters by distance >= threshold
-        results = search_engine.search(query, threshold=0.5)
+        search_engine.search(query, threshold=0.5)
 
         # Filter results with distance >= threshold
-        filtered = [r for r in all_results if r.get('_distance', 0) >= 0.5]
+        filtered = [r for r in all_results if r.get("_distance", 0) >= 0.5]
         assert len(filtered) == 2
 
     def test_search_generates_query_embedding(self, search_engine):
@@ -153,10 +147,7 @@ class TestSearchEngineSearch:
 
         search_engine.search(query, limit=5)
 
-        search_engine.vectorstore.search.assert_called_once_with(
-            query_embedding.tolist(),
-            limit=5
-        )
+        search_engine.vectorstore.search.assert_called_once_with(query_embedding.tolist(), limit=5)
 
     def test_search_returns_empty_list_when_no_results(self, search_engine):
         """Test search returns empty list when no results found."""
@@ -179,7 +170,7 @@ class TestSearchEngineSearch:
 
         # Check that limit parameter is 10 by default
         call_args = search_engine.vectorstore.search.call_args
-        assert call_args[1]['limit'] == 10
+        assert call_args[1]["limit"] == 10
 
     def test_search_with_many_results(self, search_engine):
         """Test search returning many results."""
@@ -188,8 +179,7 @@ class TestSearchEngineSearch:
 
         # Create many results
         results = [
-            {'episode_title': f'Episode {i}', '_distance': 0.1 + i * 0.01}
-            for i in range(100)
+            {"episode_title": f"Episode {i}", "_distance": 0.1 + i * 0.01} for i in range(100)
         ]
         search_engine.vectorstore.search.return_value = results
 
@@ -204,16 +194,16 @@ class TestSearchEngineSearch:
 
         # Return unfiltered results
         unfiltered_results = [
-            {'id': 1, '_distance': 0.2},
-            {'id': 2, '_distance': 0.5},
-            {'id': 3, '_distance': 0.8},
+            {"id": 1, "_distance": 0.2},
+            {"id": 2, "_distance": 0.5},
+            {"id": 3, "_distance": 0.8},
         ]
         search_engine.vectorstore.search.return_value = unfiltered_results
 
-        results = search_engine.search(query, threshold=0.5)
+        search_engine.search(query, threshold=0.5)
 
         # Filter manually to check expected behavior
-        expected = [r for r in unfiltered_results if r.get('_distance', 0) >= 0.5]
+        expected = [r for r in unfiltered_results if r.get("_distance", 0) >= 0.5]
         assert len(expected) == 2
 
     def test_search_preserves_result_metadata(self, search_engine):
@@ -222,20 +212,20 @@ class TestSearchEngineSearch:
         search_engine.embedding_model.embed_text.return_value = np.random.randn(384)
 
         result_with_metadata = {
-            'id': 1,
-            'episode_id': 'ep123',
-            'episode_title': 'Great Episode',
-            'podcast_title': 'Awesome Podcast',
-            'text': 'This is great content',
-            '_distance': 0.15
+            "id": 1,
+            "episode_id": "ep123",
+            "episode_title": "Great Episode",
+            "podcast_title": "Awesome Podcast",
+            "text": "This is great content",
+            "_distance": 0.15,
         }
         search_engine.vectorstore.search.return_value = [result_with_metadata]
 
         results = search_engine.search(query)
 
-        assert results[0]['episode_id'] == 'ep123'
-        assert results[0]['episode_title'] == 'Great Episode'
-        assert results[0]['podcast_title'] == 'Awesome Podcast'
+        assert results[0]["episode_id"] == "ep123"
+        assert results[0]["episode_title"] == "Great Episode"
+        assert results[0]["podcast_title"] == "Awesome Podcast"
 
 
 class TestSearchEngineGetRecommendations:
@@ -320,7 +310,7 @@ class TestSearchEngineIntegration:
         mock_em.embed_text.return_value = query_embedding
 
         expected_results = [
-            {'episode_title': 'Episode 1', '_distance': 0.1},
+            {"episode_title": "Episode 1", "_distance": 0.1},
         ]
         mock_vs.search.return_value = expected_results
 
@@ -329,7 +319,7 @@ class TestSearchEngineIntegration:
 
         # Verify
         assert len(results) == 1
-        assert results[0]['episode_title'] == 'Episode 1'
+        assert results[0]["episode_title"] == "Episode 1"
         mock_em.embed_text.assert_called_once()
         mock_vs.search.assert_called_once()
 
@@ -347,8 +337,8 @@ class TestSearchEngineIntegration:
         ]
 
         mock_vs.search.side_effect = [
-            [{'id': 1, '_distance': 0.1}],
-            [{'id': 2, '_distance': 0.2}],
+            [{"id": 1, "_distance": 0.1}],
+            [{"id": 2, "_distance": 0.2}],
         ]
 
         # Execute multiple searches
@@ -356,8 +346,8 @@ class TestSearchEngineIntegration:
         results2 = se.search("query 2")
 
         assert len(results1) == 1
-        assert results1[0]['id'] == 1
+        assert results1[0]["id"] == 1
         assert len(results2) == 1
-        assert results2[0]['id'] == 2
+        assert results2[0]["id"] == 2
         assert mock_em.embed_text.call_count == 2
         assert mock_vs.search.call_count == 2

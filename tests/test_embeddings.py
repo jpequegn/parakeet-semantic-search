@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 from parakeet_search.embeddings import EmbeddingModel
 
@@ -12,7 +12,7 @@ class TestEmbeddingModelInit:
 
     def test_init_default_model(self):
         """Test initialization with default model."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_st.return_value = mock_model
@@ -25,7 +25,7 @@ class TestEmbeddingModelInit:
 
     def test_init_custom_model(self):
         """Test initialization with custom model."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
             mock_st.return_value = mock_model
@@ -38,7 +38,7 @@ class TestEmbeddingModelInit:
 
     def test_init_stores_model_reference(self):
         """Test that init properly stores model reference."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_st.return_value = mock_model
@@ -54,7 +54,7 @@ class TestEmbeddingModelEmbedText:
     @pytest.fixture
     def embedding_model(self):
         """Create a mock EmbeddingModel for testing."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_st.return_value = mock_model
@@ -78,10 +78,7 @@ class TestEmbeddingModelEmbedText:
 
         embedding_model.embed_text("test text")
 
-        embedding_model.model.encode.assert_called_once_with(
-            "test text",
-            convert_to_numpy=True
-        )
+        embedding_model.model.encode.assert_called_once_with("test text", convert_to_numpy=True)
 
     def test_embed_text_single_character(self, embedding_model):
         """Test embedding of single character."""
@@ -112,10 +109,7 @@ class TestEmbeddingModelEmbedText:
         result = embedding_model.embed_text(special_text)
 
         assert isinstance(result, np.ndarray)
-        embedding_model.model.encode.assert_called_once_with(
-            special_text,
-            convert_to_numpy=True
-        )
+        embedding_model.model.encode.assert_called_once_with(special_text, convert_to_numpy=True)
 
     def test_embed_text_empty_string(self, embedding_model):
         """Test embedding of empty string."""
@@ -133,7 +127,7 @@ class TestEmbeddingModelEmbedTexts:
     @pytest.fixture
     def embedding_model(self):
         """Create a mock EmbeddingModel for testing."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_st.return_value = mock_model
@@ -161,9 +155,7 @@ class TestEmbeddingModelEmbedTexts:
         embedding_model.embed_texts(texts)
 
         embedding_model.model.encode.assert_called_once_with(
-            texts,
-            convert_to_numpy=True,
-            show_progress_bar=True
+            texts, convert_to_numpy=True, show_progress_bar=True
         )
 
     def test_embed_texts_single_text(self, embedding_model):
@@ -203,7 +195,7 @@ class TestEmbeddingModelEmbedTexts:
         texts = [
             "short",
             "a medium length text here",
-            "this is a much longer text that contains more words and more information " * 10
+            "this is a much longer text that contains more words and more information " * 10,
         ]
         result = embedding_model.embed_texts(texts)
 
@@ -233,7 +225,7 @@ class TestEmbeddingModelIntegration:
 
     def test_embedding_dimension_consistency(self):
         """Test that embedding dimension is consistent across calls."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 384
             mock_st.return_value = mock_model
@@ -252,7 +244,7 @@ class TestEmbeddingModelIntegration:
 
     def test_model_name_attribute(self):
         """Test that model_name attribute is preserved."""
-        with patch('parakeet_search.embeddings.SentenceTransformer') as mock_st:
+        with patch("parakeet_search.embeddings.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
             mock_st.return_value = mock_model
