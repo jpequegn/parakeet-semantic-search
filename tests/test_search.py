@@ -238,12 +238,13 @@ class TestSearchEngineGetRecommendations:
         mock_vs = MagicMock()
         return SearchEngine(embedding_model=mock_em, vectorstore=mock_vs)
 
-    def test_get_recommendations_not_implemented(self, search_engine):
-        """Test that get_recommendations is placeholder."""
-        # According to current implementation, this should be None/placeholder
-        result = search_engine.get_recommendations("ep123")
+    def test_get_recommendations_raises_error_uninitialized(self, search_engine):
+        """Test that get_recommendations raises error when vectorstore not initialized."""
+        # Ensure vectorstore is not initialized
+        search_engine.vectorstore.table = None
 
-        assert result is None
+        with pytest.raises(RuntimeError, match="not initialized"):
+            search_engine.get_recommendations("ep123")
 
 
 class TestSearchEngineErrorHandling:
