@@ -233,12 +233,122 @@ def search(
 
 
 @cli.command()
-@click.option("--episode-id", help="Episode ID for recommendations")
-@click.option("--limit", default=5, help="Number of recommendations")
-def recommend(episode_id: str, limit: int):
-    """Get recommendations based on an episode."""
-    click.echo(f"Recommendations for episode {episode_id}...")
-    click.echo("(Coming in Phase 3)")
+@click.option(
+    "--episode-id",
+    required=True,
+    help="Episode ID to find recommendations for",
+)
+@click.option(
+    "--limit",
+    default=5,
+    type=int,
+    help="Number of recommendations (default: 5)",
+    show_default=True,
+)
+@click.option(
+    "--podcast-id",
+    default=None,
+    help="Filter recommendations by podcast ID (optional)",
+)
+@click.option(
+    "--format",
+    type=click.Choice(["table", "json", "markdown"]),
+    default="table",
+    help="Output format (default: table)",
+    show_default=True,
+)
+@click.option(
+    "--save-results",
+    type=click.Path(),
+    default=None,
+    help="Save results to file (json/md auto-detected by extension)",
+)
+def recommend(
+    episode_id: str,
+    limit: int,
+    podcast_id: str,
+    format: str,
+    save_results: str,
+):
+    """Get recommendations for an episode.
+
+    Examples:
+        parakeet-search recommend --episode-id ep_001
+        parakeet-search recommend --episode-id ep_001 --limit 10 --format json
+        parakeet-search recommend --episode-id ep_001 --podcast-id pod_001 --save-results recommendations.json
+    """
+    # Validate options
+    if limit < 1 or limit > 100:
+        raise CLIError("--limit must be between 1 and 100")
+
+    try:
+        # Show progress
+        with click.progressbar(
+            length=100,
+            label=f"Finding recommendations for episode '{episode_id}'",
+            show_pos=True,
+        ) as bar:
+            # Initialize search engine
+            engine = SearchEngine()
+            bar.update(30)
+
+            # Get recommendations
+            results = engine.get_recommendations(
+                episode_id=episode_id,
+                limit=limit,
+                podcast_id=podcast_id,
+            )
+            bar.update(70)
+
+    except ValueError as e:
+        raise CLIError(f"Invalid episode: {str(e)}")
+    except RuntimeError as e:
+        raise CLIError(f"Search engine error: {str(e)}")
+    except Exception as e:
+        raise CLIError(f"Recommendation failed: {str(e)}")
+
+    # Format results
+    if format == "json":
+        output = format_json(results)
+    elif format == "markdown":
+        output = format_markdown(results)
+    else:  # table
+        output = format_table(results)
+
+    # Display results
+    click.echo()
+    if not results:
+        click.secho("No recommendations found.", fg="yellow")
+    else:
+        click.secho(
+            f"Found {len(results)} recommendation{'s' if len(results) != 1 else ''}",
+            fg="green",
+        )
+        click.echo()
+        click.echo(output)
+
+    # Save to file if requested
+    if save_results:
+        try:
+            output_path = Path(save_results)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Detect format from file extension if not explicitly set
+            if format == "table":
+                if save_results.endswith(".json"):
+                    output = format_json(results)
+                elif save_results.endswith(".md"):
+                    output = format_markdown(results)
+
+            with open(output_path, "w") as f:
+                f.write(output)
+
+            click.secho(
+                f"\n✓ Results saved to {output_path}",
+                fg="green",
+            )
+        except Exception as e:
+            raise CLIError(f"Failed to save results: {str(e)}")
 
 
 def main():

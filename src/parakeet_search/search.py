@@ -40,15 +40,73 @@ class SearchEngine:
 
         return results
 
-    def get_recommendations(self, episode_id: str, limit: int = 5):
+    def get_recommendations(
+        self,
+        episode_id: str,
+        limit: int = 5,
+        podcast_id: str = None,
+        exclude_episode: bool = True,
+    ):
         """Get recommendations similar to a given episode.
 
         Args:
             episode_id: Episode ID to find similar episodes for
             limit: Number of recommendations
+            podcast_id: Optional filter by podcast ID
+            exclude_episode: Whether to exclude the source episode (default: True)
 
         Returns:
-            List of similar episodes
+            List of similar episodes with metadata
+
+        Raises:
+            ValueError: If episode_id not found in vector store
+            RuntimeError: If vector store is not initialized
         """
-        # TODO: Implement in Phase 3
-        pass
+        if not self.vectorstore.table:
+            raise RuntimeError("Vector store not initialized. Call create_table() first.")
+
+        # Get the episode's embedding from the vector store
+        table = self.vectorstore.get_table()
+
+        # Query for the source episode
+        try:
+            source_records = table.search_where(
+                f'episode_id = "{episode_id}"'
+            ).limit(1).to_list()
+        except Exception as e:
+            raise ValueError(f"Episode {episode_id} not found: {str(e)}")
+
+        if not source_records:
+            raise ValueError(f"Episode {episode_id} not found in vector store")
+
+        source_embedding = source_records[0].get("embedding")
+        if source_embedding is None:
+            raise ValueError(f"No embedding found for episode {episode_id}")
+
+        # Search for similar episodes
+        # Request limit+1 in case we need to exclude the source episode
+        search_limit = limit + 1 if exclude_episode else limit
+        results = self.vectorstore.search(
+            source_embedding,
+            table_name="transcripts",
+            limit=search_limit,
+        )
+
+        # Filter out the source episode if requested
+        if exclude_episode:
+            results = [
+                r for r in results
+                if r.get("episode_id") != episode_id
+            ]
+
+        # Apply podcast filter if provided
+        if podcast_id:
+            results = [
+                r for r in results
+                if r.get("podcast_id") == podcast_id
+            ]
+
+        # Trim to requested limit
+        results = results[:limit]
+
+        return results
