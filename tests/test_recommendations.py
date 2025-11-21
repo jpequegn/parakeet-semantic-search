@@ -549,3 +549,426 @@ class TestRecommendationIntegration:
                 assert results[0]["_distance"] == 0.10
                 assert results[1]["_distance"] == 0.20
                 assert results[2]["_distance"] == 0.30
+
+
+class TestHybridRecommendations:
+    """Test SearchEngine.get_hybrid_recommendations() method."""
+
+    def test_hybrid_recommendations_single_episode(self, sample_dataframe):
+        """Test hybrid recommendations with a single episode."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+            record = sample_dataframe.iloc[0].to_dict()
+            mock_result = MagicMock()
+            mock_result.limit.return_value.to_list.return_value = [record]
+            mock_table.search_where.return_value = mock_result
+
+            # Mock search to return similar episodes
+            results_data = [
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.15},
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.25},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_hybrid_recommendations("ep_001", limit=2)
+
+                assert len(results) == 2
+                assert results[0]["episode_id"] == "ep_002"
+                assert results[1]["episode_id"] == "ep_003"
+
+    def test_hybrid_recommendations_multiple_episodes(self, sample_dataframe):
+        """Test hybrid recommendations with multiple episodes."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+
+            # Return different records for different episode IDs
+            def search_where_impl(where_clause):
+                mock_result = MagicMock()
+                for i, record in enumerate(sample_dataframe.to_dict("records")[:3]):
+                    if f'episode_id = "{record["episode_id"]}"' == where_clause:
+                        mock_result.limit.return_value.to_list.return_value = [record]
+                        return mock_result
+                mock_result.limit.return_value.to_list.return_value = []
+                return mock_result
+
+            mock_table.search_where = search_where_impl
+
+            # Mock search to return recommendations (excluding source episodes)
+            results_data = [
+                {**sample_dataframe.iloc[3].to_dict(), "_distance": 0.20},
+                {**sample_dataframe.iloc[4].to_dict(), "_distance": 0.30},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_hybrid_recommendations(["ep_001", "ep_002"], limit=2)
+
+                assert len(results) == 2
+                assert results[0]["episode_id"] == "ep_004"
+                assert results[1]["episode_id"] == "ep_005"
+
+    def test_hybrid_recommendations_excludes_all_sources(self, sample_dataframe):
+        """Test that source episodes are excluded when requested."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+
+            def search_where_impl(where_clause):
+                mock_result = MagicMock()
+                for record in sample_dataframe.to_dict("records")[:2]:
+                    if f'episode_id = "{record["episode_id"]}"' == where_clause:
+                        mock_result.limit.return_value.to_list.return_value = [record]
+                        return mock_result
+                mock_result.limit.return_value.to_list.return_value = []
+                return mock_result
+
+            mock_table.search_where = search_where_impl
+
+            # Return all results including source episodes
+            results_data = [
+                {**sample_dataframe.iloc[0].to_dict(), "_distance": 0.05},  # ep_001 (source)
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.10},  # ep_002 (source)
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.15},  # ep_003 (not source)
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_hybrid_recommendations(["ep_001", "ep_002"], limit=1, exclude_episodes=True)
+
+                # Should only have ep_003
+                assert len(results) == 1
+                assert results[0]["episode_id"] == "ep_003"
+
+    def test_hybrid_recommendations_max_episodes_limit(self, sample_dataframe):
+        """Test that maximum 10 episodes enforces limit."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                # Should raise ValueError for > 10 episodes
+                with pytest.raises(ValueError, match="Maximum 10 episodes"):
+                    engine.get_hybrid_recommendations(
+                        [f"ep_{i:03d}" for i in range(11)], limit=5
+                    )
+
+    def test_hybrid_recommendations_empty_list(self, sample_dataframe):
+        """Test that empty list raises ValueError."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                with pytest.raises(ValueError, match="cannot be empty"):
+                    engine.get_hybrid_recommendations([], limit=5)
+
+    def test_hybrid_recommendations_with_diversity_boost(self, sample_dataframe):
+        """Test hybrid recommendations with diversity boosting."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+            record = sample_dataframe.iloc[0].to_dict()
+            mock_result = MagicMock()
+            mock_result.limit.return_value.to_list.return_value = [record]
+            mock_table.search_where.return_value = mock_result
+
+            # Return results with some from same podcast
+            results_data = [
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.10, "podcast_id": "pod_ai"},
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.15, "podcast_id": "pod_ai"},
+                {**sample_dataframe.iloc[3].to_dict(), "_distance": 0.20, "podcast_id": "pod_ml"},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_hybrid_recommendations("ep_001", limit=3, diversity_boost=0.2)
+
+                # Results should be reordered due to diversity
+                assert len(results) == 3
+
+
+class TestRecommendationsWithDateFilter:
+    """Test SearchEngine.get_recommendations_with_date_filter() method."""
+
+    def test_recommendations_with_min_date(self, sample_dataframe):
+        """Test filtering recommendations by minimum date."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+            record = sample_dataframe.iloc[0].to_dict()
+            mock_result = MagicMock()
+            mock_result.limit.return_value.to_list.return_value = [record]
+            mock_table.search_where.return_value = mock_result
+
+            # Return results with different dates
+            results_data = [
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.10, "episode_date": "2024-01-01"},
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.15, "episode_date": "2024-06-01"},
+                {**sample_dataframe.iloc[3].to_dict(), "_distance": 0.20, "episode_date": "2024-12-01"},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_recommendations_with_date_filter(
+                    "ep_001", limit=3, min_date="2024-06-01"
+                )
+
+                # Should only have dates >= 2024-06-01
+                assert len(results) == 2
+                assert results[0]["episode_date"] == "2024-06-01"
+                assert results[1]["episode_date"] == "2024-12-01"
+
+    def test_recommendations_with_max_date(self, sample_dataframe):
+        """Test filtering recommendations by maximum date."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+            record = sample_dataframe.iloc[0].to_dict()
+            mock_result = MagicMock()
+            mock_result.limit.return_value.to_list.return_value = [record]
+            mock_table.search_where.return_value = mock_result
+
+            results_data = [
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.10, "episode_date": "2024-01-01"},
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.15, "episode_date": "2024-06-01"},
+                {**sample_dataframe.iloc[3].to_dict(), "_distance": 0.20, "episode_date": "2024-12-01"},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_recommendations_with_date_filter(
+                    "ep_001", limit=3, max_date="2024-06-01"
+                )
+
+                # Should only have dates <= 2024-06-01
+                assert len(results) == 2
+                assert results[0]["episode_date"] == "2024-01-01"
+                assert results[1]["episode_date"] == "2024-06-01"
+
+    def test_recommendations_with_date_range(self, sample_dataframe):
+        """Test filtering recommendations by date range."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+            record = sample_dataframe.iloc[0].to_dict()
+            mock_result = MagicMock()
+            mock_result.limit.return_value.to_list.return_value = [record]
+            mock_table.search_where.return_value = mock_result
+
+            results_data = [
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.10, "episode_date": "2024-01-01"},
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.15, "episode_date": "2024-06-01"},
+                {**sample_dataframe.iloc[3].to_dict(), "_distance": 0.20, "episode_date": "2024-12-01"},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_recommendations_with_date_filter(
+                    "ep_001", limit=3, min_date="2024-03-01", max_date="2024-09-01"
+                )
+
+                # Should only have 2024-06-01
+                assert len(results) == 1
+                assert results[0]["episode_date"] == "2024-06-01"
+
+    def test_recommendations_no_date_filter(self, sample_dataframe):
+        """Test that no date parameters returns all results."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+            mock_vs.table = MagicMock()
+
+            mock_table = mock_vs.get_table.return_value
+            record = sample_dataframe.iloc[0].to_dict()
+            mock_result = MagicMock()
+            mock_result.limit.return_value.to_list.return_value = [record]
+            mock_table.search_where.return_value = mock_result
+
+            results_data = [
+                {**sample_dataframe.iloc[1].to_dict(), "_distance": 0.10, "episode_date": "2024-01-01"},
+                {**sample_dataframe.iloc[2].to_dict(), "_distance": 0.15, "episode_date": "2024-06-01"},
+            ]
+            mock_vs.search.return_value = results_data
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+                results = engine.get_recommendations_with_date_filter("ep_001", limit=2)
+
+                # Should have all results
+                assert len(results) == 2
+
+
+class TestDiversityScoring:
+    """Test SearchEngine._apply_diversity_scoring() method."""
+
+    def test_diversity_scoring_reorders_results(self, sample_dataframe):
+        """Test that diversity scoring reorders results."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                # Results with some from same podcast
+                results = [
+                    {"episode_id": "ep_002", "podcast_id": "pod_ai", "_distance": 0.10},
+                    {"episode_id": "ep_003", "podcast_id": "pod_ai", "_distance": 0.15},
+                    {"episode_id": "ep_004", "podcast_id": "pod_ml", "_distance": 0.20},
+                ]
+
+                diversified = engine._apply_diversity_scoring(results, 0.1)
+
+                # Should be reordered
+                assert len(diversified) == 3
+                assert "_diversity_score" not in diversified[0]
+
+    def test_diversity_scoring_empty_results(self, sample_dataframe):
+        """Test diversity scoring with empty results."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                diversified = engine._apply_diversity_scoring([], 0.1)
+
+                assert diversified == []
+
+    def test_diversity_scoring_single_result(self, sample_dataframe):
+        """Test diversity scoring with single result."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                results = [
+                    {"episode_id": "ep_002", "podcast_id": "pod_ai", "_distance": 0.10},
+                ]
+
+                diversified = engine._apply_diversity_scoring(results, 0.1)
+
+                assert len(diversified) == 1
+                assert diversified[0]["episode_id"] == "ep_002"
+
+
+class TestDateRangeFiltering:
+    """Test SearchEngine._filter_by_date_range() method."""
+
+    def test_filter_by_date_range_both_bounds(self, sample_dataframe):
+        """Test filtering with both min and max dates."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                results = [
+                    {"episode_id": "ep_001", "episode_date": "2024-01-01"},
+                    {"episode_id": "ep_002", "episode_date": "2024-06-01"},
+                    {"episode_id": "ep_003", "episode_date": "2024-12-01"},
+                ]
+
+                filtered = engine._filter_by_date_range(results, "2024-03-01", "2024-09-01")
+
+                assert len(filtered) == 1
+                assert filtered[0]["episode_date"] == "2024-06-01"
+
+    def test_filter_by_date_range_min_only(self, sample_dataframe):
+        """Test filtering with min date only."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                results = [
+                    {"episode_id": "ep_001", "episode_date": "2024-01-01"},
+                    {"episode_id": "ep_002", "episode_date": "2024-06-01"},
+                ]
+
+                filtered = engine._filter_by_date_range(results, min_date="2024-03-01")
+
+                assert len(filtered) == 1
+                assert filtered[0]["episode_date"] == "2024-06-01"
+
+    def test_filter_by_date_range_max_only(self, sample_dataframe):
+        """Test filtering with max date only."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                results = [
+                    {"episode_id": "ep_001", "episode_date": "2024-01-01"},
+                    {"episode_id": "ep_002", "episode_date": "2024-06-01"},
+                ]
+
+                filtered = engine._filter_by_date_range(results, max_date="2024-03-01")
+
+                assert len(filtered) == 1
+                assert filtered[0]["episode_date"] == "2024-01-01"
+
+    def test_filter_by_date_range_missing_dates(self, sample_dataframe):
+        """Test that results with missing dates are skipped."""
+        with patch("parakeet_search.search.VectorStore") as MockVectorStore:
+            mock_vs = MagicMock()
+            MockVectorStore.return_value = mock_vs
+
+            with patch("parakeet_search.search.EmbeddingModel"):
+                engine = SearchEngine()
+
+                results = [
+                    {"episode_id": "ep_001"},  # No date
+                    {"episode_id": "ep_002", "episode_date": "2024-06-01"},
+                    {"episode_id": "ep_003"},  # No date
+                ]
+
+                filtered = engine._filter_by_date_range(results, min_date="2024-03-01")
+
+                assert len(filtered) == 1
+                assert filtered[0]["episode_id"] == "ep_002"
