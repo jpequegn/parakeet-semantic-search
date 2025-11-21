@@ -20,14 +20,49 @@ python -m venv venv
 source venv/bin/activate
 pip install -e .
 
-# Generate embeddings from your P³ podcasts
-python scripts/ingest_transcripts.py --source /path/to/p3/duckdb.db
-python scripts/generate_embeddings.py
-python scripts/build_index.py
+# Setup data pipeline (see docs/DATA_INGESTION.md)
+python scripts/ingest_from_duckdb.py --p3-db /path/to/p3.duckdb
+python scripts/chunk_transcripts.py
+python scripts/embed_and_store.py
 
-# Search
-python -m parakeet_search.cli search "AI and regulation"
+# Search episodes
+parakeet-search search "machine learning"
+
+# Get recommendations
+parakeet-search recommend --episode-id ep_001 --limit 5
 ```
+
+## CLI Usage
+
+### Search for Episodes
+
+```bash
+# Basic search
+parakeet-search search "AI ethics"
+
+# With options
+parakeet-search search "deep learning" \
+  --limit 20 \
+  --threshold 0.5 \
+  --format json \
+  --save-results results.json
+```
+
+### Get Recommendations
+
+```bash
+# Find similar episodes
+parakeet-search recommend --episode-id ep_001
+
+# With filters and options
+parakeet-search recommend --episode-id ep_001 \
+  --limit 10 \
+  --podcast-id pod_ai \
+  --format markdown \
+  --save-results recommendations.md
+```
+
+For comprehensive CLI documentation, see [USAGE.md](docs/USAGE.md).
 
 ## Project Status
 
@@ -84,11 +119,17 @@ UI: CLI, Jupyter, Streamlit
 - Performance optimization
 - Documentation
 
-## Resources
+## Documentation
 
+### Getting Started
+- **[USAGE.md](docs/USAGE.md)** - Comprehensive CLI guide with examples, options, and troubleshooting
+- **[DATA_INGESTION.md](docs/DATA_INGESTION.md)** - Data pipeline architecture and setup guide
+
+### Reference
 - [Architecture Document](docs/ARCHITECTURE.md)
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)
 - [Design Decisions](docs/DESIGN_DECISIONS.md)
+- [Benchmarks](docs/BENCHMARKS.md)
 
 ## Contributing
 
