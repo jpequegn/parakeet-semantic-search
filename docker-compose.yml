@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  # REST API Service
+  api:
+    build: .
+    container_name: parakeet-api
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=info
+      - CACHE_ENABLED=true
+      - CACHE_TTL=3600
+      - CACHE_MAX_SIZE=1000
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    volumes:
+      - parakeet-data:/app/data
+      - parakeet-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - parakeet-network
+    command: uvicorn apps.fastapi_app:app --host 0.0.0.0 --port 8000
+
+  # Streamlit Web UI Service
+  web:
+    build: .
+    container_name: parakeet-web
+    ports:
+      - "8501:8501"
+    environment:
+      - LOG_LEVEL=info
+      - CACHE_ENABLED=true
+      - CACHE_TTL=3600
+    volumes:
+      - parakeet-data:/app/data
+      - parakeet-logs:/app/logs
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - parakeet-network
+    command: streamlit run apps/streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+
+volumes:
+  parakeet-data:
+    driver: local
+  parakeet-logs:
+    driver: local
+
+networks:
+  parakeet-network:
+    driver: bridge
