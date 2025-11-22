@@ -196,6 +196,50 @@ class CachingSearchEngine:
         )
         return results
 
+    def get_hybrid_recommendations(
+        self,
+        episode_ids: List[str],
+        limit: int = 10,
+        diversity_boost: float = 0.0,
+        podcast_id: Optional[str] = None,
+    ):
+        """Get hybrid recommendations for multiple episodes with caching.
+
+        Args:
+            episode_ids: List of episode IDs
+            limit: Number of recommendations
+            diversity_boost: Diversity boost factor (0-1)
+            podcast_id: Optional podcast filter
+
+        Returns:
+            Hybrid recommendations (from cache or computed)
+        """
+        # Create cache key from episode IDs
+        episodes_key = ":".join(sorted(episode_ids))
+        cached = self.cache.get(
+            f"hybrid_rec:{episodes_key}",
+            limit=limit,
+            diversity_boost=diversity_boost,
+            podcast_id=podcast_id,
+        )
+        if cached is not None:
+            return cached
+
+        results = self.search_engine.get_hybrid_recommendations(
+            episode_ids=episode_ids,
+            limit=limit,
+            diversity_boost=diversity_boost,
+            podcast_id=podcast_id,
+        )
+        self.cache.set(
+            f"hybrid_rec:{episodes_key}",
+            results,
+            limit=limit,
+            diversity_boost=diversity_boost,
+            podcast_id=podcast_id,
+        )
+        return results
+
     def clear_cache(self) -> None:
         """Clear search cache."""
         self.cache.clear()
